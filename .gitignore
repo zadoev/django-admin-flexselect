@@ -1,3 +1,5 @@
+.idea/
+django_admin_flexselect.egg-info
 *.pyc
 virtualenv
 build
