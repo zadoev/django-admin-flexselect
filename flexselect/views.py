@@ -26,4 +26,4 @@ def field_changed(request):
     return HttpResponse(json.dumps({
         'options' : options,
         'details': details_from_instance(instance, widget),
-        }), mimetype='application/json')
+        }), content_type='application/json')

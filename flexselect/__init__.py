@@ -4,8 +4,8 @@ import hashlib
 import json
 
 from django.forms.widgets import Select
+from django.utils.encoding import smart_text as smart_unicode
 from django.utils.safestring import mark_safe
-from django.utils.encoding import smart_unicode
 from django.conf import settings
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
@@ -118,7 +118,7 @@ class FlexSelectWidget(Select):
                   settings.SECRET_KEY,
                   self.base_field.name,
                   self.modeladmin.__class__.__name__,
-            ])
+            ]).encode('utf-8')
             return "_%s" % hashlib.sha1(salted_string).hexdigest()
         
     def _get_instance(self):
