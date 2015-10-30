@@ -3,7 +3,7 @@ from itertools import chain
 import hashlib
 import json
 
-from django.forms.widgets import Select
+from django.forms.widgets import Select, SelectMultiple
 from django.utils.encoding import smart_text as smart_unicode
 from django.utils.safestring import mark_safe
 from django.conf import settings
@@ -17,7 +17,9 @@ FLEXSELECT = {
 }
 try: FLEXSELECT.update(settings.FLEXSELECT)
 except AttributeError: pass
- 
+
+
+
 def choices_from_queryset(queryset):
     """
     Makes choices from a QuerySet in a format that is usable by the 
@@ -80,8 +82,11 @@ def instance_from_request(request, widget):
                 except ValidationError:
                     pass
         return widget.base_field.model(**values)
-    
-class FlexSelectWidget(Select):
+
+
+
+
+class FlexBaseWidget(object):
     instances = {}
     unique_name = None
     
@@ -95,16 +100,16 @@ class FlexSelectWidget(Select):
             js.append('%s/jqueryui/1.8.13/jquery-ui.min.js' % googlecdn)
         js.append('flexselect/js/flexselect.js')
         
-    def __init__(self, base_field, modeladmin, request, *args, 
+    def __init__(self, base_field, modeladmin, request, choice_function=None, *args,
                  **kwargs):
-            
+        self.choice_function = choice_function
         self.base_field = base_field
         self.modeladmin = modeladmin
         self.request = request
         
         self.hashed_name = self._hashed_name()
         FlexSelectWidget.instances[self.hashed_name] = self
-        super(FlexSelectWidget, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         
     def _hashed_name(self):
         """
@@ -159,9 +164,13 @@ class FlexSelectWidget(Select):
         details() method.
         """
         instance = self._get_instance()
-        self.choices = choices_from_instance(instance, self)
+        if self.choice_function:
+            self.choices = self.choice_function(instance)
+        else:
+            self.choices = choices_from_instance(instance, self)
+
         html = []
-        html.append(super(FlexSelectWidget, self).render(
+        html.append(super().render(
             name, value, attrs=attrs, 
             *args, **kwargs
         ))
@@ -184,4 +193,12 @@ class FlexSelectWidget(Select):
     def empty_choices_text(self, instance):
         raise NotImplementedError
     
-    
+
+class FlexSelectWidget(FlexBaseWidget, Select):
+    pass
+
+
+class FlexSelectMultipleWidget(FlexBaseWidget, SelectMultiple):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
