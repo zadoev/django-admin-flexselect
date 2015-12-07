@@ -152,7 +152,7 @@ class FlexBaseWidget(object):
         <script>
             var flexselect = flexselect || {};
             flexselect.fields = flexselect.fields || {};
-            flexselect.url = %s;
+            window.__flexselect_url__ = "%s";
             flexselect.fields.%s = %s;
         </script>""" % (
             reverse('flexselect_field_changed'),
@@ -175,7 +175,7 @@ class FlexBaseWidget(object):
         else:
             self.choices = choices_from_instance(instance, self)
         return mark_safe(''.join([
-            super(self, FlexBaseWidget).render(
+            super(FlexBaseWidget, self).render(
                 name, value, attrs=attrs,
                 *args, **kwargs
             ),
