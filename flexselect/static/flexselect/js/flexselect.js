@@ -7,18 +7,15 @@ var flexselect = flexselect || {};
  * Binds base and trigger fields.
  */
 flexselect.bind_events = function() {
-    if (typeof that.flexselect === 'undefined') return;
-    var fields = that.flexselect.fields;
-    for (hashed_name in fields) {
-    	field = fields[hashed_name];
-    	var base_field = field.base_field;
-    	flexselect.bind_base_field(base_field, hashed_name);
-    	for (var i in field.trigger_fields) {
-    		var trigger_field = field.trigger_fields[i]; 
-    		flexselect.bind_trigger_field(trigger_field, hashed_name, 
-    			                          base_field);
-    	}
-	} 
+	if (typeof that.flexselect === 'undefined') return;
+	var fields = that.flexselect.fields;
+	$.each(fields, function(hashed_name, field) {
+		var base_field = field.base_field;
+		flexselect.bind_base_field(base_field, hashed_name);
+		$.each(field.trigger_fields, function(i, trigger_field) {
+			flexselect.bind_trigger_field(trigger_field, hashed_name, base_field);
+		});
+	});
 };
 
 /**
@@ -31,9 +28,9 @@ flexselect.bind_base_field = function(base_field, hashed_name) {
 		'success': function(data) {
 			$(this).parent().find('span.flexselect_details').html(data.details);
 		},
-		'data': '&include_options=0',
+		'data': '&include_options=0'
 	}, flexselect.ajax);
-}
+};
 
 /**
  * Binds the change event of a trigger field to the flexselect.ajax() function.
@@ -50,10 +47,10 @@ base_field) {
 			if (typeof $.ui !== 'undefined') {
 				$(this).parents('.form-row').stop()
 							    .css('background-color', '#F49207')
-					            .animate({ backgroundColor: "white" }, 4000);
+						      .animate({ backgroundColor: "white" }, 4000);
 			}
 	    },
-	    'data': '&include_options=1',
+	    'data': '&include_options=1'
 	}, flexselect.ajax);
 };
 
@@ -63,7 +60,7 @@ base_field) {
  */
 flexselect.ajax = function(event) {
 	$.ajax({
-		url: '/flexselect/field_changed',
+		url: flexselect.url,
 		data: $('form').serialize() + '&hashed_name=' + event.data.hashed_name
 			  + event.data.data,
 		type: 'post',
@@ -71,9 +68,9 @@ flexselect.ajax = function(event) {
 		success: event.data.success,
 	    error: function(data) {
 	    	alert("Something went wrong with flexselect.");
-	    },
+	    }
 	});
-}
+};
 
 /**
  * Returns the form element from a field name in the model.
