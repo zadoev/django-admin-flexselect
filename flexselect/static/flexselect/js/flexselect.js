@@ -6,14 +6,14 @@
   /**
    * Binds base and trigger fields.
    */
-  flexselect.bind_events = function() {
+  flexselect.bindEvents = function() {
     if (typeof that.flexselect === 'undefined') return;
     var fields = that.flexselect.fields;
-    $.each(fields, function(hashed_name, field) {
-      var base_field = field.base_field;
-      flexselect.bind_base_field(base_field, hashed_name);
-      $.each(field.trigger_fields, function(i, trigger_field) {
-        flexselect.bind_trigger_field(trigger_field, hashed_name, base_field);
+    $.each(fields, function(hashedName, field) {
+      flexselect.bindBaseField(field.baseField, hashedName, field.url);
+      $.each(field.triggerFields, function(key, triggerField) {
+        flexselect.bindTriggerField(triggerField, hashedName,
+                                    field.baseField, field.url);
       });
     });
   };
@@ -21,28 +21,33 @@
   /**
    * Binds the change event of a base field to the flexselect.ajax() function.
    */
-  flexselect.bind_base_field = function(base_field, hashed_name) {
-    flexselect.get_element(base_field).on('change', {
-      'base_field': base_field,
-      'hashed_name': hashed_name,
-      'success': function(data) {
+  flexselect.bindBaseField = function(baseField, hashedName, url) {
+    var data = {
+      baseField: baseField,
+      hashedName: hashedName,
+      url: url,
+      success: function(data) {
         $(this).parent().find('span.flexselect_details').html(data.details);
       },
-      'data': '&include_options=0'
-    }, flexselect.ajax);
+      data: '&include_options=0'
+    };
+    flexselect.getElement(baseField)
+      .on('change', data, flexselect.ajax)
+      .trigger('change');
   };
 
   /**
    * Binds the change event of a trigger field to the flexselect.ajax() function.
    */
-  flexselect.bind_trigger_field = function(trigger_field, hashed_name,
-  base_field) {
-    flexselect.get_element(trigger_field).on('change', {
-      'base_field': base_field,
-      'hashed_name': hashed_name,
-      'success': function(data) {
+  flexselect.bindTriggerField = function(triggerField, hashedName,
+                                         baseField, url) {
+    var data = {
+      baseField: baseField,
+      hashedName: hashedName,
+      url: url,
+      success: function(data) {
         $(this).html(data.options);
-        $(this).parent().find('span.flexselect_details').html("");
+        $(this).parent().find('span.flexselect_details').html('');
         // If jQueryUI is installed, flash the dependent form field row.
         if (typeof $.ui !== 'undefined') {
           $(this).parents('.form-row')
@@ -51,21 +56,22 @@
               .animate({backgroundColor: 'white'}, 4000);
         }
       },
-      'data': '&include_options=1'
-    }, flexselect.ajax);
+      data: '&include_options=1'
+    };
+    flexselect.getElement(triggerField).on('change', data, flexselect.ajax);
   };
 
   /**
    * Performs a ajax call that options the base field. In the event.data it needs
-   * the keys "hashed_name", "base_field", "data" and "success".
+   * the keys "hashedName", "baseField", "data" and "success".
    */
   flexselect.ajax = function(event) {
     $.ajax({
-      url: window.__flexselect_url__,
-      data: $('form').serialize() + '&hashed_name=' + event.data.hashed_name
+      url: event.data.url,
+      data: $('form').serialize() + '&hashed_name=' + event.data.hashedName
           + event.data.data,
       type: 'post',
-      context: flexselect.get_element(event.data.base_field),
+      context: flexselect.getElement(event.data.baseField),
       success: event.data.success,
       error: function(data) {
         alert("Something went wrong with flexselect.");
@@ -76,20 +82,20 @@
   /**
    * Returns the form element from a field name in the model.
    */
-  flexselect.get_element = function(field_name) {
-    return $('#id_' + field_name);
+  flexselect.getElement = function(fieldName) {
+    return $('#id_' + fieldName);
   };
 
   /**
    * Moves all details fields to after the green plussign.
    */
-  flexselect.move_after_plussign = function() {
+  flexselect.moveAfterPlussign = function() {
     // Delay execution to after all other initial js have been run.
     window.setTimeout(function() {
       $('span.flexselect_details').each(function() {
         $(this).next('.add-another').after($(this));
       });
-    }, 0);
+    }, 1);
   };
 
   /**
@@ -106,8 +112,8 @@
 
   // On Document.ready().
   $(function() {
-    flexselect.bind_events();
-    flexselect.move_after_plussign();
+    flexselect.bindEvents();
+    flexselect.moveAfterPlussign();
   });
 
 })(jQuery || django.jQuery, this);

@@ -2,7 +2,7 @@ from itertools import chain
 import hashlib
 import json
 
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse, resolve
 from django.forms.widgets import Select, SelectMultiple
 from django.utils.encoding import smart_text as smart_unicode
 from django.utils.safestring import mark_safe
@@ -137,8 +137,7 @@ class FlexBaseWidget(object):
             return instance_from_request(self.request, self)
         else:
             try:
-                path = self.request.META['PATH_INFO'].strip('/')
-                object_id = int(path.split('/').pop())
+                object_id = resolve(self.request.META['PATH_INFO']).args[0]
                 return self.modeladmin.get_object(self.request, object_id)
             except ValueError:
                 return None
@@ -152,14 +151,13 @@ class FlexBaseWidget(object):
         <script>
             var flexselect = flexselect || {};
             flexselect.fields = flexselect.fields || {};
-            window.__flexselect_url__ = "%s";
             flexselect.fields.%s = %s;
         </script>""" % (
-            reverse('flexselect_field_changed'),
             self.hashed_name,
             json.dumps({
-                'base_field': self.base_field.name,
-                'trigger_fields': self.trigger_fields,
+                'baseField': self.base_field.name,
+                'triggerFields': self.trigger_fields,
+                'url': reverse('flexselect_field_changed'),
             }),
         )
 

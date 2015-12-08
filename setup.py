@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name='django-admin-flexselect',
-    version='0.4.1',
+    version='0.4.2',
     author=u'Rune Kaagaard',
     author_email='rumi.kg@gmail.com',
     packages=['flexselect'],
