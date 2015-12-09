@@ -1,7 +1,7 @@
 from itertools import chain
-import hashlib
 import json
 
+from django.apps import apps
 from django.core.urlresolvers import reverse, resolve
 from django.forms.widgets import Select, SelectMultiple
 from django.utils.encoding import smart_text as smart_unicode
@@ -71,30 +71,20 @@ def details_from_instance(instance, widget):
     return widget.details(related_instance, instance)
 
 
-def instance_from_request(request, widget):
-    """
-    Returns a partial instance of the widgets model loading it with values
-    from a POST request.
-    """
-    items = dict(request.POST.items())
-    values = {}
-    for f in widget.base_field.model._meta.fields:
-        if f.name in items:
-            try:
-                value = f.formfield().to_python(items[f.name])
-                if value is not None:
-                    values[f.name] = value
-            except ValidationError:
-                pass
-    return widget.base_field.model(**values)
+def object_from_request(request):
+    try:
+        object_pk = resolve(request.path).args[0]
+    except IndexError:
+        raise ValueError(request.path)
+    return model_from_request(request).objects.get(pk=object_pk)
+
+
+def model_from_request(request):
+    resolved = resolve(request.path)
+    return apps.get_model(*resolved.url_name.split('_')[:2])
 
 
 class FlexBaseWidget(object):
-    instances = {}
-    unique_name = None
-
-    """ Instances of widgets with their hashed names as keys."""
-
     class Media:
         js = []
         if FLEXSELECT['include_jquery']:
@@ -109,37 +99,49 @@ class FlexBaseWidget(object):
         self.base_field = base_field
         self.modeladmin = modeladmin
         self.request = request
-
-        self.hashed_name = self._hashed_name()
-        FlexSelectWidget.instances[self.hashed_name] = self
         super(FlexBaseWidget, self).__init__(*args, **kwargs)
 
-    def _hashed_name(self):
+    @classmethod
+    def object_from_post(cls, model, data):
         """
-        Each widget will be unique by the name of the field and the class name
-        of the model admin.
+        Returns a partial instance of the widgets model loading it with values
+        from a POST request.
         """
-        if self.unique_name is not None:
-            return self.unique_name
-        else:
-            salted_string = ''.join([
-                settings.SECRET_KEY,
-                self.base_field.name,
-                self.modeladmin.__class__.__name__,
-            ]).encode('utf-8')
-            return "_%s" % hashlib.sha1(salted_string).hexdigest()
+        items = dict(data.items())
+        values = {}
+        for f in model._meta.fields:
+            if f.name in items:
+                try:
+                    value = f.formfield().to_python(items[f.name])
+                    if value is not None:
+                        values[f.name] = value
+                except ValidationError:
+                    pass
+        return model(**values)
 
-    def _get_instance(self):
+    def get_unique_name(self):
+        return '__'.join((
+            self.modeladmin.model._meta.app_label,
+            self.modeladmin.model.__name__,
+            self.base_field.name,
+        )).lower()
+
+    def _get_model_instance(self):
         """
         Returns a model instance from the url in the admin page.
         """
-        if self.request.method == 'POST':
-            return instance_from_request(self.request, self)
-        try:
-            object_id = resolve(self.request.META['PATH_INFO']).args[0]
-        except IndexError:
-            return None
-        return self.modeladmin.get_object(self.request, object_id)
+        if 'hashed_name' in self.request.POST:
+            print 'hn'
+            hashed_name = self.request.POST.get('hashed_name')
+            model = apps.get_model(*hashed_name.split('__')[:2])
+            obj = self.object_from_post(model, self.request.POST)
+        else:
+            try:
+                obj = object_from_request(self.request)
+            except ValueError:
+                model = model_from_request(self.request)
+                obj = self.object_from_post(model, self.request.POST)
+        return obj
 
     def _build_js(self):
         """
@@ -152,7 +154,7 @@ class FlexBaseWidget(object):
             flexselect.fields = flexselect.fields || {};
             flexselect.fields.%s = %s;
         </script>""" % (
-            self.hashed_name,
+            self.get_unique_name(),
             json.dumps({
                 'baseField': self.base_field.name,
                 'triggerFields': self.trigger_fields,
@@ -166,7 +168,7 @@ class FlexBaseWidget(object):
         method and adds a details <span> that is filled with the widgets
         details() method.
         """
-        instance = self._get_instance()
+        instance = self._get_model_instance()
         if self.choice_function:
             self.choices = self.choice_function(instance)
         else:

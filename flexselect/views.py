@@ -2,10 +2,12 @@ import json
 
 from django.http import HttpResponse
 from django.forms.widgets import Select
+from django.apps import apps
 from django.contrib.auth.decorators import login_required
+from django.contrib import admin
 
 from flexselect import (FlexSelectWidget, choices_from_instance, 
-                        details_from_instance, instance_from_request)
+                        details_from_instance)
 
 @login_required
 def field_changed(request):
@@ -13,20 +15,28 @@ def field_changed(request):
     Ajax callback called when a trigger field or base field has changed. Returns
     html for new options and details for the dependent field as json.
     """
-    hashed_name = request.POST.__getitem__('hashed_name')
-    widget = FlexSelectWidget.instances[hashed_name]
-    instance = instance_from_request(request, widget)
-    value_fk = getattr(instance, widget.base_field.name)
-    if bool(int(request.POST.__getitem__('include_options'))):
+    hashed_name = request.POST.get('hashed_name')
+    app_label, model_name, base_field_name = hashed_name.split('__')
+    model = apps.get_model(app_label, model_name)
+    obj = FlexSelectWidget.object_from_post(model, request.POST)
+    value_fk = getattr(obj, base_field_name)
+    admin_instance = admin.site._registry[obj.__class__]
+    base_field = next(f for f in obj._meta.fields if f.name == base_field_name)
+    widget = admin_instance.formfield_for_dbfield(base_field).widget.widget
+
+    if bool(int(request.POST['include_options'])):
         if widget.choice_function:
-            choices = widget.choice_function(instance)
+            choices = widget.choice_function(obj)
         else:
-            choices = choices_from_instance(instance, widget)
-        options = Select(choices=choices).render_options([], [value_fk.pk if value_fk else None])
+            choices = choices_from_instance(obj, widget)
+        options = Select(choices=choices).render_options(
+            [],
+            [value_fk.pk if value_fk else None],
+        )
     else:
         options = None
     
     return HttpResponse(json.dumps({
         'options' : options,
-        'details': details_from_instance(instance, widget),
-        }), content_type='application/json')
+        'details': details_from_instance(obj, widget),
+    }), content_type='application/json')
