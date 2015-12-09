@@ -135,12 +135,11 @@ class FlexBaseWidget(object):
         """
         if self.request.method == 'POST':
             return instance_from_request(self.request, self)
-        else:
-            try:
-                object_id = resolve(self.request.META['PATH_INFO']).args[0]
-                return self.modeladmin.get_object(self.request, object_id)
-            except ValueError:
-                return None
+        try:
+            object_id = resolve(self.request.META['PATH_INFO']).args[0]
+        except IndexError:
+            return None
+        return self.modeladmin.get_object(self.request, object_id)
 
     def _build_js(self):
         """
