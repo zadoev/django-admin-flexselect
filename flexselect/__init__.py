@@ -131,7 +131,6 @@ class FlexBaseWidget(object):
         Returns a model instance from the url in the admin page.
         """
         if 'hashed_name' in self.request.POST:
-            print 'hn'
             hashed_name = self.request.POST.get('hashed_name')
             model = apps.get_model(*hashed_name.split('__')[:2])
             obj = self.object_from_post(model, self.request.POST)
