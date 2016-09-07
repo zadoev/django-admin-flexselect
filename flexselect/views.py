@@ -6,7 +6,7 @@ from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.contrib import admin
 
-from flexselect import (FlexSelectWidget, choices_from_instance, 
+from flexselect import (FlexSelectWidget, choices_from_instance,
                         details_from_instance)
 
 @login_required
@@ -22,7 +22,10 @@ def field_changed(request):
     value_fk = getattr(obj, base_field_name)
     admin_instance = admin.site._registry[obj.__class__]
     base_field = next(f for f in obj._meta.fields if f.name == base_field_name)
-    widget = admin_instance.formfield_for_dbfield(base_field).widget.widget
+    widget = admin_instance.formfield_for_dbfield(
+        base_field,
+        request=request,
+    ).widget.widget
 
     if bool(int(request.POST['include_options'])):
         if widget.choice_function:
@@ -35,8 +38,8 @@ def field_changed(request):
         )
     else:
         options = None
-    
+
     return HttpResponse(json.dumps({
-        'options' : options,
+        'options': options,
         'details': details_from_instance(obj, widget),
     }), content_type='application/json')
