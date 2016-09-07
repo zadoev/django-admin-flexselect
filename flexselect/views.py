@@ -5,9 +5,11 @@ from django.forms.widgets import Select
 from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.contrib import admin
+from django import VERSION as DJANGO_VERSION
 
 from flexselect import (FlexSelectWidget, choices_from_instance,
                         details_from_instance)
+
 
 @login_required
 def field_changed(request):
@@ -32,10 +34,11 @@ def field_changed(request):
             choices = widget.choice_function(obj)
         else:
             choices = choices_from_instance(obj, widget)
-        options = Select(choices=choices).render_options(
-            [],
-            [value_fk.pk if value_fk else None],
-        )
+
+        args = [[value_fk.pk if value_fk else None]]
+        if DJANGO_VERSION < (1, 10, 0):
+            args.insert(0, [])
+        options = Select(choices=choices).render_options(*args)
     else:
         options = None
 
