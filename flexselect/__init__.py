@@ -198,7 +198,17 @@ class FlexBaseWidget(object):
 
 
 class FlexSelectWidget(FlexBaseWidget, Select):
-    pass
+    template_name = 'admin/flexselect/flexselect.html'
+    optiongroup_template_name = 'admin/flexselect/flexselect_optgroups.html'
+
+    def render_options_template(self, selected_items, attrs):
+        # django 1.11 only
+        context = self.get_context(
+            self.base_field.name,
+            selected_items,
+            attrs=attrs,
+        )
+        return self._render(self.optiongroup_template_name, context)
 
 
 class FlexSelectMultipleWidget(FlexBaseWidget, SelectMultiple):

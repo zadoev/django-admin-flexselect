@@ -14,8 +14,8 @@ from flexselect import (FlexSelectWidget, choices_from_instance,
 @login_required
 def field_changed(request):
     """
-    Ajax callback called when a trigger field or base field has changed. Returns
-    html for new options and details for the dependent field as json.
+    Ajax callback called when a trigger field or base field has changed.
+    Returns html for new options and details for the dependent field as json.
     """
     hashed_name = request.POST.get('hashed_name')
     app_label, model_name, base_field_name = hashed_name.split('__')
@@ -38,7 +38,13 @@ def field_changed(request):
         args = [[value_fk.pk if value_fk else None]]
         if DJANGO_VERSION < (1, 10, 0):
             args.insert(0, [])
-        options = Select(choices=choices).render_options(*args)
+        if DJANGO_VERSION < (1, 11, 0):
+            options = Select(choices=choices).render_options(*args)
+        else:
+            # django 1.11 has introduced template rednering for widgets
+            widget.choices = choices
+            val = value_fk.pk if value_fk else None
+            options = widget.render_options_template(val, widget.attrs)
     else:
         options = None
 
